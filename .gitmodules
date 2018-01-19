@@ -1,0 +1,3 @@
+[submodule "MobileNet-SSD-windows"]
+	path = MobileNet-SSD-windows
+	url = https://github.com/eric612/MobileNet-SSD-windows.git
