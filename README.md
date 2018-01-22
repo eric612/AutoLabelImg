@@ -42,7 +42,8 @@ $caffe_root\models\\MobileNet\
 
 1. Python labelimg.py
 2. click "open dir" icon and select image folder (example image : caffe/data/VOC0712)
-3. demo video
+
+### demo video
 
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/PnFCTBvq3OI/0.jpg)](https://www.youtube.com/watch?v=PnFCTBvq3OI)
 
