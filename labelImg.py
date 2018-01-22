@@ -42,9 +42,49 @@ from libs.pascal_voc_io import XML_EXT
 from libs.ustr import ustr
 from libs.version import __version__
 
+import numpy as np
+import cv2
+import sys
+caffe_root = 'caffe/'  # this file should be run from {caffe_root}/examples (otherwise change this line)
+sys.path.insert(0, caffe_root + 'python')
+
+import caffe
+import math
+
 __appname__ = 'Avisonic Labeling Tool'
 
 # Utility functions and classes.
+CLASSES = ('__background__',
+           'aeroplane', 'bicycle', 'bird', 'boat',
+           'bottle', 'bus', 'car', 'cat', 'chair',
+           'cow', 'diningtable', 'dog', 'horse',
+           'motorbike', 'person', 'pottedplant',
+           'sheep', 'sofa', 'train', 'tvmonitor')
+#CLASSES = ('__background__', # always index 0
+#           'bicycle', 'car','motorbike', 'person', 'cones')
+CLASSES_COCO = ('__background__',
+           'person', 'bicycle', 'car', 'motorbike',
+           'airplane', 'car', 'train', 'car', 'boat',
+           'traffic light', 'fire hydrant', 'street sign',
+           'stop sign', 'parking meter', 'bench',
+           'bird', 'cat', 'dog', 'horse','sheep','cow',
+           'elephant','bear','zebra','giraffe',
+           'hat','backpack','umbrella','shoe','eye glasses',
+		   'handbag','tie','suitcase','frisbee','skis',
+		   'snowboard','sports ball','kite','baseball bat',
+		   'baseball glove','skateboard','surfboard','tennis racket',
+		   'bottle','plate','wine glass','cup','fork',
+		   'knife','spoon','bowl','banana','apple','sandwich',
+		   'orange','broccoli','carrot','hot dog','pizza',
+		   'donut','cake','chair','couch','potted plant','bed',
+		   'mirror','dining table','window','desk','toilet',
+		   'door','tv','laptop','mouse','remote','keyboard',
+		   'cell phone','microwave','oven')
+
+mu = np.array([0.5, 0.5, 0.5])
+
+# create transformer for the input called 'data'
+
 
 def have_qstring():
     '''p3/qt5 get rid of QString wrapper as py3 has native unicode str type'''
@@ -202,7 +242,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.dockFeatures = QDockWidget.DockWidgetClosable\
             | QDockWidget.DockWidgetFloatable
         self.dock.setFeatures(self.dock.features() ^ self.dockFeatures)
-
+        # For Caffe detection
+        self.transformer = None
         # Actions
         action = partial(newAction, self)
         quit = action('&Quit', self.close,
@@ -405,7 +446,38 @@ class MainWindow(QMainWindow, WindowMixin):
         self.fit_window = False
         # Add Chris
         self.difficult = False
+        # Caffe Init
+        '''construct main app and run it'''
+        #prototxt = os.path.join(cfg.MODELS_DIR, NETS['vgg16'][0],'faster_rcnn_alt_opt', 'faster_rcnn_test.pt')
+        #caffemodel = os.path.join(cfg.DATA_DIR, 'faster_rcnn_models',NETS['vgg16'][1])
+        #prototxt = os.path.join(cfg.MODELS_DIR, 'VGG16','faster_rcnn_end2end', 'test.prototxt')
+        #caffemodel = os.path.join(cfg.DATA_DIR, 'faster_rcnn_models',NETS['vgg16_avs'][1])
+        model_weights = 'caffe/models/MobileNet/MobileNetSSD_deploy.caffemodel'
+        model_def = 'caffe/models/MobileNet/MobileNetSSD_deploy.prototxt'
+        if not os.path.isfile(model_weights):
+            raise IOError(('{:s} not found.\nDid you run ./data/script/'
+                            'fetch_faster_rcnn_models.sh?').format(caffemodel))
+        caffe.set_mode_cpu()
+        self.caffe_net = caffe.Net(model_def, model_weights, caffe.TEST)
+        #print(net)
+        print ('\n\nLoaded network {:s}'.format(model_weights))
 
+         # Warmup on a dummy image
+        im = 128 * np.ones((3,300, 300), dtype=np.uint8)
+        self.caffe_net.blobs['data'].reshape(1,        # batch size
+                        3,         # 3-channel (BGR) images
+                        300, 300)  # image size is 227x227
+        self.transformer = caffe.io.Transformer({'data': self.caffe_net.blobs['data'].data.shape})
+        self.transformer.set_transpose('data', (2,0,1))  # move image channels to outermost dimension
+        self.transformer.set_mean('data', mu)            # subtract the dataset-mean value in each channel
+        self.transformer.set_raw_scale('data', 1.0)      # rescale from [0, 1] to [0, 255]
+        self.transformer.set_channel_swap('data', (2,1,0))  # swap channels from RGB to BGR
+        for i in xrange(2):
+           # _, _= im_detect(self.caffe_net, im)
+           self.det(im)
+ 
+        # Closes all the frames
+        cv2.destroyAllWindows()
         ## Fix the compatible issue for qt4 and qt5. Convert the QStringList to python list
         if settings.get(SETTING_RECENT_FILES):
             if have_qstring():
@@ -460,6 +532,10 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def noShapes(self):
         return not self.itemsToShapes
+    def addShape(self, label, xmin , ymin, xmax, ymax, difficult):
+        points = [(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)]
+        self.shapes.append((label, points, None, None, difficult))
+
 
     def toggleAdvancedMode(self, value=True):
         self._beginner = not value
@@ -913,7 +989,7 @@ class MainWindow(QMainWindow, WindowMixin):
                 # read data first and store for saving into label file.
                 self.imageData = read(unicodeFilePath, None)
                 self.labelFile = None
-                subprocess.call('bin/caffe.exe')  
+                #subprocess.call('bin/caffe.exe')  
                 #im = cv2.imread(unicodeFilePath)
                 #cv2.imshow("Image", im)
                             
@@ -927,6 +1003,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.image = image
             self.filePath = unicodeFilePath
             self.canvas.loadPixmap(QPixmap.fromImage(image))
+            print(self.labelFile)
             if self.labelFile:
                 self.loadLabels(self.labelFile.shapes)
             self.setClean()
@@ -942,7 +1019,13 @@ class MainWindow(QMainWindow, WindowMixin):
                     basename = os.path.basename(
                         os.path.splitext(self.filePath)[0]) + XML_EXT
                     xmlPath = os.path.join(self.defaultSaveDir, basename)
-                    self.loadPascalXMLByFilename(xmlPath)
+                    if os.path.isfile(xmlPath):
+                        self.loadPascalXMLByFilename(xmlPath)
+                    else:
+                        self.shapes = []
+                        self.demo(self.caffe_net,unicodeFilePath)
+                        #self.addShape ('car',100,100,400,400,Shape.difficult)
+                        self.loadLabels(self.shapes)
                 else:
                     xmlPath = os.path.splitext(filePath)[0] + XML_EXT
                     if os.path.isfile(xmlPath):
@@ -1073,6 +1156,7 @@ class MainWindow(QMainWindow, WindowMixin):
                 if isinstance(filename, (tuple, list)):
                     filename = filename[0]
             self.loadPascalXMLByFilename(filename)
+            print(filename)
 
     def openDirDialog(self, _value=False):
         if not self.mayContinue():
@@ -1314,6 +1398,42 @@ class MainWindow(QMainWindow, WindowMixin):
         self.loadLabels(shapes)
         self.canvas.verified = tVocParseReader.verified
 
+    def vis_detections(self,image,result) :
+        w = image.shape[1]
+        h = image.shape[0]
+        for i in range(result.shape[1]):
+            left = result[0][i][3] * w
+            top = result[0][i][4] * h
+            right = result[0][i][5] * w
+            bot = result[0][i][6] * h
+            score = result[0][i][2]
+            label = result[0][i][1]
+            if(score>0.5) :
+                #print(left,right,top,bot,score,label)
+                label = '{:s}'.format(CLASSES[int(label)])
+                self.addShape (label,left,top,right,bot,Shape.difficult)
+
+    def det(self,image):
+
+        transformed_image = self.transformer.preprocess('data', image)
+        #plt.imshow(image)
+
+        self.caffe_net.blobs['data'].data[...] = transformed_image
+
+        ### perform classification
+        output = self.caffe_net.forward()
+
+        res = output['detection_out'][0]  # the output probability vector for the first image in the batch
+        #print(res.shape)
+        return res
+
+    def demo(self,net, image_name):
+        """Detect object classes in an image using pre-computed object proposals."""
+        im = caffe.io.load_image(image_name)
+        # Detect all object classes and regress object bounds
+        result = self.det(im)
+        self.vis_detections(im,result)
+ 
 
 def inverted(color):
     return QColor(*[255 - v for v in color.getRgb()])
