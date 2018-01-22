@@ -13,6 +13,7 @@
 ### Configuring and Building 
 
 ```
+> git clone https://github.com/eric612/AutoLabelImg.git --recursive
 > cd $AutoLabelImg_root/
 > build.bat
 ```
