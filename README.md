@@ -14,6 +14,13 @@
 
 ```
 > git clone https://github.com/eric612/AutoLabelImg.git --recursive
+```
+
+Download pre-train weights from original [web](https://github.com/chuanqi305/MobileNet-SSD) and save at 
+
+$caffe_root\models\\MobileNet\
+
+```
 > cd $AutoLabelImg_root/
 > build.bat
 ```
