@@ -18,7 +18,8 @@
 > conda install -c anaconda pyqt=4
 > pip install -i https://pypi.anaconda.org/ales-erjavec/simple pyqt4
 > (Option) pip install lxml 
-> (Option) pip install opencv (or use anaconda navigator to install opencv)
+> (Option) pip install opencv (or use anaconda navigator to install)
+> (Option) pip install scikits-image (or use anaconda navigator to install)
 ```
 
 
