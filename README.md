@@ -20,6 +20,7 @@
 > (Option) pip install lxml 
 > (Option) pip install opencv (or use anaconda navigator to install)
 > (Option) pip install scikits-image (or use anaconda navigator to install)
+> (Option) pip install protobuf
 ```
 
 
@@ -42,7 +43,8 @@ $caffe_root\models\\MobileNet\
 ### Usage
 
 1. Python labelimg.py
-2. click "open dir" icon and select image folder (example image : caffe/data/VOC0712)
+2. click button "Change Save Dir" , and select your xml folder.
+2. click button "Open Dir" and select image folder (example image : caffe/data/VOC0712)
 
 ### demo video
 
