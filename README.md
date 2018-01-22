@@ -25,6 +25,8 @@ $caffe_root\models\\MobileNet\
 > build.bat
 ```
 
+Drink a coffe
+
 ### Usage
 
 1. Python labelimg.py
