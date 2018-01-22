@@ -22,5 +22,5 @@
 1. Python labelimg.py
 2. click "open dir" icon and select your image folder , then you can see the result like below video
 
-[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/AJwl5agRRyY&t/0.jpg)](https://www.youtube.com/watch?v=AJwl5agRRyY&t)
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/AJwl5agRRyY/0.jpg)](https://www.youtube.com/watch?v=AJwl5agRRyY)
 
