@@ -963,6 +963,9 @@ class MainWindow(QMainWindow, WindowMixin):
             filePath = self.settings.get(SETTING_FILENAME)
 
         unicodeFilePath = ustr(filePath)
+        ext = [".3g2", ".3gp", ".asf", ".asx", ".avi", ".flv", \
+                        ".m2ts", ".mkv", ".mov", ".mp4", ".mpg", ".mpeg", \
+                        ".rm", ".swf", ".vob", ".wmv", ".MOV"]
         # Tzutalin 20160906 : Add file list and dock to move faster
         # Highlight the file item
         if unicodeFilePath and self.fileListWidget.count() > 0:
@@ -984,6 +987,28 @@ class MainWindow(QMainWindow, WindowMixin):
                 self.imageData = self.labelFile.imageData
                 self.lineColor = QColor(*self.labelFile.lineColor)
                 self.fillColor = QColor(*self.labelFile.fillColor)
+            elif unicodeFilePath.endswith(tuple(ext)):
+                cap = cv2.VideoCapture(unicodeFilePath)
+                count = 0
+                length = cap.get(cv2.cv2.CAP_PROP_FRAME_COUNT)
+                #print(length)
+                fname = os.path.basename(os.path.splitext(unicodeFilePath)[0])
+                skip = 60
+                if not os.path.exists('image'):
+                    os.makedirs('image')
+                while(cap.isOpened()):          
+                    ret, frame = cap.read()
+                    cv2.imshow('frame',frame)
+                    cv2.imwrite("image\%s_%05d.jpg" %(fname,count),frame,[int(cv2.IMWRITE_JPEG_QUALITY), 90])
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+                    count+=1
+                    cap.set(cv2.cv2.CAP_PROP_POS_FRAMES ,count*skip);
+                    if(count*skip>length):
+                        break
+                cap.release()
+                cv2.destroyAllWindows()
+                return
             else:
                 # Load image:
                 # read data first and store for saving into label file.
@@ -1259,7 +1284,7 @@ class MainWindow(QMainWindow, WindowMixin):
             return
         path = os.path.dirname(ustr(self.filePath)) if self.filePath else '.'
         formats = ['*.%s' % fmt.data().decode("ascii").lower() for fmt in QImageReader.supportedImageFormats()]
-        filters = "Image & Label files (%s)" % ' '.join(formats + ['*%s' % LabelFile.suffix])
+        filters = "Image & Label files (%s)" % ' '.join(formats + ['*%s' % LabelFile.suffix] +['*.mp4']+['*.MOV']+['*.avi']+['*.mov'])
         filename = QFileDialog.getOpenFileName(self, '%s - Choose Image or Label file' % __appname__, path, filters)
         if filename:
             if isinstance(filename, (tuple, list)):
